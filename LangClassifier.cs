@@ -19,14 +19,12 @@ namespace langTest
             get { return accuracy; }
         }
         Dictionary<String, int>[] classes;
-        Dictionary<String, int> wordsDic;
         int[] classStat;
         int totalStat;
         public LangClassifier()
         {
             accuracy = 0;
             classes = new Dictionary<string, int>[revMap.Count];
-            wordsDic = new Dictionary<string, int>();
             for (int i = 0; i < revMap.Count; i++)
             {
                 classes[i] = new Dictionary<string, int>();
@@ -119,10 +117,7 @@ namespace langTest
                 {
                     if (!classes[data[i].label].ContainsKey(s))
                         classes[data[i].label].Add(s, 0);
-                    if (!wordsDic.ContainsKey(s))
-                        wordsDic.Add(s, 0);
                     classes[data[i].label][s]++;
-                    wordsDic[s]++;
                     classStat[data[i].label]++;
                     totalStat++;
                 }
@@ -139,7 +134,7 @@ namespace langTest
         {
             String[] words = splitTextToWords(text);
             
-            return revMap.Keys.Min(c => new ComparablePair<int,double>(c, words.Sum(w => -Math.Log(classes[c].ContainsKey(w) ? (double)classes[c][w] / wordsDic[w] : 1e-7)) - Math.Log((double)classStat[c] / totalStat))).id;
+            return revMap.Keys.Min(c => new ComparablePair<int,double>(c, words.Sum(w => -Math.Log(classes[c].ContainsKey(w) ? (double)classes[c][w] / classStat[c] : 1e-7)) - Math.Log((double)classStat[c] / totalStat))).id;
 
         }
     }
