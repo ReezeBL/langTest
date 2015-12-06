@@ -27,7 +27,7 @@ namespace langTest
             }
             LangClassifier classifier = new LangClassifier();
             classifier.teach(forTrain.ToArray());
-            Console.WriteLine(classifier.accuracy);
+            Console.WriteLine(classifier.Accuracy);
             lines = File.ReadAllLines(testfilename);
             StringBuilder ans = new StringBuilder();
             foreach(string s in lines)

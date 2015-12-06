@@ -10,10 +10,65 @@ namespace langTest
 {
     public class LangClassifier
     {
+
         private static Dictionary<string, int> labelMap;
-        private static Dictionary<int, string> revMap;
+        private static Dictionary<int, string> revMap;           
+        private double accuracy;
+        public Double Accuracy
+        {
+            get { return accuracy; }
+        }
+        Dictionary<String, int>[] classes;
+        int[] classStat;
+        int totalStat;
+        public LangClassifier()
+        {
+            accuracy = 0;
+            classes = new Dictionary<string, int>[revMap.Count];
+            for (int i = 0; i < revMap.Count; i++)
+            {
+                classes[i] = new Dictionary<string, int>();
+            }
+            classStat = new int[revMap.Count];
+        }
+        #region Technical Data
+        public struct Data
+        {
+            public String text;
+            public int label;
+            public Data(int label, String word) { this.label = label; this.text = word; }
+        }
+        private class ComparablePair<TKey, TVal> : IComparable
+        {
+            public TKey id;
+            public TVal val;
+            public ComparablePair(TKey a, TVal b) { id = a; val = b; }
+            public int CompareTo(object obj)
+            {
+                if (obj == null)
+                    return 1;
+                ComparablePair<TKey, TVal> p = obj as ComparablePair<TKey, TVal>;
+                if (p != null)
+                    return (val as IComparable).CompareTo(p.val);
+                else
+                    throw new ArgumentException("Obj is not ComparablePair of nessesary types!");
+            }
+        }
         private static Regex special = new Regex(@"[-+,.:/\'«»" + '"' + "]");
         private static Regex numbers = new Regex(@"[0-9]");
+        static public int getLabel(string l)
+        {
+            return labelMap[l];
+        }
+
+        static public String getLabel(int i)
+        {
+            return revMap[i];
+        }
+        String[] splitTextToWords(String text)
+        {
+            return special.Replace(text, "").ToUpper().Split(' ').Where(e => !numbers.IsMatch(e)).ToArray();
+        }
         public static void InitDictionary()
         {
             labelMap = new Dictionary<string, int>();
@@ -51,41 +106,7 @@ namespace langTest
             revMap.Add(14, "LT");
 
         }
-
-        public double accuracy;
-
-        Dictionary<String, int>[] classes;
-        int[] classStat;
-        int totalStat;
-        public LangClassifier()
-        {
-            accuracy = 0;
-            classes = new Dictionary<string, int>[revMap.Count];
-            for (int i = 0; i < revMap.Count; i++)
-            {
-                classes[i] = new Dictionary<string, int>();
-            }
-            classStat = new int[revMap.Count];
-        }
-
-        public struct Data
-        {
-            public String text;
-            public int label;
-            public Data(int label, String word) { this.label = label; this.text = word; }
-        }
-        static public int getLabel(string l)
-        {
-            return labelMap[l];
-        }
-        static public String getLabel(int i)
-        {
-            return revMap[i];
-        }
-        String[] splitTextToWords(String text)
-        {
-            return special.Replace(text, "").ToUpper().Split(' ').Where(e => !numbers.IsMatch(e)).ToArray();
-        }
+        #endregion
         public void teach(Data[] data)
         {
             int n = data.Length;
@@ -112,17 +133,9 @@ namespace langTest
         public int classify(String text)
         {
             String[] words = splitTextToWords(text);
-            int min = -1; double minp = Double.MaxValue;
-            for (int i = 0; i < labelMap.Keys.Count; i++)
-            {
-                double p = words.Sum(e => -Math.Log(classes[i].ContainsKey(e) ? (double)classes[i][e] / classStat[i] : 1e-7)) - Math.Log((double)classStat[i]/totalStat);
-                if (p < minp)
-                {
-                    minp = p;
-                    min = i;
-                }
-            }
-            return min;
+            
+            return revMap.Keys.Min(c => new ComparablePair<int,double>(c, words.Sum(w => -Math.Log(classes[c].ContainsKey(w) ? (double)classes[c][w] / classStat[c] : 1e-7)) - Math.Log((double)classStat[c] / totalStat))).id;
+
         }
     }
 }
