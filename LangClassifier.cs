@@ -10,33 +10,54 @@ namespace langTest
 {
     public class LangClassifier
     {
-
-        private static Dictionary<string, int> labelMap;
-        private static Dictionary<int, string> revMap;           
-        private double accuracy;
-        public Double Accuracy
+        private double accuracy = 0;
+        public double Accuracy
         {
             get { return accuracy; }
         }
-        Dictionary<String, int>[] classes;
-        int[] classStat;
-        int totalStat;
-        public LangClassifier()
-        {
-            accuracy = 0;
-            classes = new Dictionary<string, int>[revMap.Count];
-            for (int i = 0; i < revMap.Count; i++)
-            {
-                classes[i] = new Dictionary<string, int>();
-            }
-            classStat = new int[revMap.Count];
-        }
+        LabelList labels = new LabelList();
+        int totalStat = 0;
         #region Technical Data
+        private class LabelList
+        {
+            private readonly HashSet<String> labels = new HashSet<string>();
+            public readonly HashSet<String> words = new HashSet<string>();
+            private Dictionary<String, Label> dictionary = new Dictionary<String, Label>();
+            public HashSet<string> Labels { get { return labels; } }
+            public Label getDictionary(String label)
+            {
+                if (!labels.Contains(label))
+                {
+                    labels.Add(label);
+                    dictionary.Add(label, new Label());
+                }
+                return dictionary[label];
+            }
+        } 
+        private class Label
+        {
+            private Dictionary<string, int> words = new Dictionary<string, int>();
+            public int Count = 0;
+            public int Words = 0;
+            public int Get(string word)
+            {
+                if (!words.ContainsKey(word))
+                    return 0;
+                return words[word];
+            }
+
+            public void Add(string word)
+            {
+                if (!words.ContainsKey(word))
+                    words.Add(word, 0);
+                words[word]++;
+            }
+        }
         public struct Data
         {
-            public String text;
-            public int label;
-            public Data(int label, String word) { this.label = label; this.text = word; }
+            public string text;
+            public string label;
+            public Data(string label, string text) { this.label = label; this.text = text; }
         }
         private class ComparablePair<TKey, TVal> : IComparable
         {
@@ -51,91 +72,66 @@ namespace langTest
                 if (p != null)
                     return (val as IComparable).CompareTo(p.val);
                 else
-                    throw new ArgumentException("Obj is not ComparablePair of nessesary types!");
+                    throw new ArgumentException("Obj is not ComparablePair of nessesary type!");
             }
         }
         private static Regex special = new Regex(@"[-+,.:/\'«»" + '"' + "]");
         private static Regex numbers = new Regex(@"[0-9]");
-        static public int getLabel(string l)
-        {
-            return labelMap[l];
-        }
 
-        static public String getLabel(int i)
-        {
-            return revMap[i];
-        }
         String[] splitTextToWords(String text)
         {
-            return special.Replace(text, "").ToUpper().Split(' ').Where(e => !numbers.IsMatch(e)).ToArray();
+            return special.Replace(text, "").ToUpper().Split(' ').Where(e => !numbers.IsMatch(e) && e.Length > 0).ToArray();
         }
-        public static void InitDictionary()
-        {
-            labelMap = new Dictionary<string, int>();
-            revMap = new Dictionary<int, string>();
-            labelMap.Add("SV", 0);
-            labelMap.Add("ES", 1);
-            labelMap.Add("EN", 2);
-            labelMap.Add("HU", 3);
-            labelMap.Add("DA", 4);
-            labelMap.Add("DE", 5);
-            labelMap.Add("IT", 6);
-            labelMap.Add("NL", 7);
-            labelMap.Add("PL", 8);
-            labelMap.Add("LV", 9);
-            labelMap.Add("EE", 10);
-            labelMap.Add("FR", 11);
-            labelMap.Add("CS", 12);
-            labelMap.Add("FI", 13);
-            labelMap.Add("LT", 14);
-
-            revMap.Add(0, "SV");
-            revMap.Add(1, "ES");
-            revMap.Add(2, "EN");
-            revMap.Add(3, "HU");
-            revMap.Add(4, "DA");
-            revMap.Add(5, "DE");
-            revMap.Add(6, "IT");
-            revMap.Add(7, "NL");
-            revMap.Add(8, "PL");
-            revMap.Add(9, "LV");
-            revMap.Add(10, "EE");
-            revMap.Add(11, "FR");
-            revMap.Add(12, "CS");
-            revMap.Add(13, "FI");
-            revMap.Add(14, "LT");
-
-        }
+        
         #endregion
         public void teach(Data[] data)
         {
             int n = data.Length;
-            for (int i = 0; i < n; i++)
+            int m =(int)(n * 0.75);
+            for (int i = 0; i < m; i++)
             {
+                Label label = labels.getDictionary(data[i].label);
                 string[] words = splitTextToWords(data[i].text);
-                foreach (string s in words)
+                foreach (string w in words)
                 {
-                    if (!classes[data[i].label].ContainsKey(s))
-                        classes[data[i].label].Add(s, 0);
-                    classes[data[i].label][s]++;
-                    classStat[data[i].label]++;
-                    totalStat++;
+                    label.Add(w);
+                    label.Words++;
+                    labels.words.Add(w);
                 }
+                label.Count++;
+                totalStat++;
             }
+
             int testSuccess = 0;
-            for (int i = 0; i < n; i++)
+            for (int i = m; i < n; i++)
             {
                 if (this.classify(data[i].text) == data[i].label)
                     testSuccess++;
             }
-            accuracy = (double)testSuccess / (n);
-        }
-        public int classify(String text)
-        {
-            String[] words = splitTextToWords(text);
-            
-            return revMap.Keys.Min(c => new ComparablePair<int,double>(c, words.Sum(w => -Math.Log(classes[c].ContainsKey(w) ? (double)classes[c][w] / classStat[c] : 1e-7)) - Math.Log((double)classStat[c] / totalStat))).id;
+            accuracy = (double)testSuccess / (n-m);
 
+            for (int i = m; i < n; i++)
+            {
+                Label label = labels.getDictionary(data[i].label);
+                string[] words = splitTextToWords(data[i].text);
+                foreach (string w in words)
+                {
+                    label.Add(w);
+                    label.Words++;
+                    labels.words.Add(w);
+                }
+                label.Count++;
+                totalStat++;
+            }
+        }
+        public string classify(String text)
+        {
+            string[] words = splitTextToWords(text);
+            return labels.Labels.Min(c =>
+            {
+                Label l = labels.getDictionary(c);
+                return new ComparablePair<string, double>(c, words.Sum(w => -Math.Log((double)(l.Get(w) + 1) / (labels.words.Count + l.Words))) - Math.Log((double)l.Count / totalStat));
+            }).id;
         }
     }
 }

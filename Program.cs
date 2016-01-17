@@ -13,7 +13,6 @@ namespace langTest
         static Dictionary<String, int> d = new Dictionary<string, int>();
         static void Main(string[] args)
         {
-            LangClassifier.InitDictionary();     
             test("train.txt","test.txt");
         }    
         static void test(string filename, string testfilename)
@@ -23,7 +22,7 @@ namespace langTest
             foreach (string s in lines)
             {
                 string[] split = s.Split('\t');
-                forTrain.Add(new LangClassifier.Data(LangClassifier.getLabel(split[0]), split[1]));           
+                forTrain.Add(new LangClassifier.Data(split[0], split[1]));           
             }
             LangClassifier classifier = new LangClassifier();
             classifier.teach(forTrain.ToArray());
@@ -32,9 +31,9 @@ namespace langTest
             StringBuilder ans = new StringBuilder();
             foreach(string s in lines)
             {
-                ans.AppendLine(String.Format("{0}", LangClassifier.getLabel(classifier.classify(s))));
+                ans.AppendLine(String.Format("{0}", classifier.classify(s)));
             }
-            File.WriteAllText("output.txt", ans.ToString());
+            File.WriteAllText("output2.txt", ans.ToString());
         }
 
     }
